@@ -1,5 +1,13 @@
 # Docker environments
 
-## Diffusion\_policy
+Docker environments for experiments
 
-Docker environment for diffusion\_policy
+```bash
+cd {PROJECT}
+docker compose up -d
+docker exec -it -u user {CONTAINER} bash
+```
+
+## Environments
+
+- `diffusion_policy`: docker environment for workspaces regarding diffusion policy 
