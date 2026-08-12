@@ -20,12 +20,11 @@ RUN apt-get update && apt-get install -y \
 SHELL ["/bin/bash", "-c"]
 
 # Create user and add to sudo group
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+# Kept ahead of the conda/mujoco layers because those append to /home/user/.bashrc
 RUN groupadd -r user && \
     useradd -r -g user -m -d /home/user -s /bin/bash user && \
     usermod -aG sudo user && \
-    echo 'export PS1="\[\e[32;1m\]\u\[\e[m\]@\[\e[32;1m\]\h\[\e[m\]:\[\e[32;1m\]\w\[\e[m\]\\$ "' >> /home/user/.bashrc && \
-    chmod +x /usr/local/bin/entrypoint.sh
+    echo 'export PS1="\[\e[32;1m\]\u\[\e[m\]@\[\e[32;1m\]\h\[\e[m\]:\[\e[32;1m\]\w\[\e[m\]\\$ "' >> /home/user/.bashrc
 
 # Install Miniconda globally in /opt/conda to prevent UID mapping permission errors
 ENV CONDA_PLUGINS_AUTO_ACCEPT_TOS=true
@@ -55,6 +54,24 @@ RUN conda env create -f conda_environment.yaml && \
     export MUJOCO_PATH=/opt/mujoco/mujoco210 && \
     python -c "import mujoco_py" && \
     chmod -R 777 /opt/conda/envs/diffusion_policy/lib/python3.9/site-packages/mujoco_py
+
+# ---------------------------------------------------------------------------
+# Everything below is cheap to rebuild. Keep it last so that editing the
+# entrypoint does not invalidate the miniconda / mujoco / conda-env layers.
+# ---------------------------------------------------------------------------
+
+# `docker exec` bypasses the entrypoint, so interactive shells activate the env here
+RUN echo "conda activate diffusion_policy" >> /home/user/.bashrc
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Records which commit of this repo produced the image:
+#   docker build --build-arg GIT_COMMIT=$(git rev-parse HEAD) ...
+ARG GIT_COMMIT=unknown
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.source="https://github.com/khhandrea/docker-environments"
+LABEL org.opencontainers.image.title="diffusion_policy"
 
 WORKDIR /workspace
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
