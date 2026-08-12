@@ -60,7 +60,11 @@ RUN conda env create -f conda_environment.yaml && \
 # entrypoint does not invalidate the miniconda / mujoco / conda-env layers.
 # ---------------------------------------------------------------------------
 
-# `docker exec` bypasses the entrypoint, so interactive shells activate the env here
+# `docker exec` bypasses the entrypoint, and .bashrc returns early for
+# non-interactive shells, so neither covers `docker exec <c> python ...`.
+# Putting the env on PATH covers every entry path; the entrypoint still runs a
+# real `conda activate` on top so that the env's activate.d scripts apply.
+ENV PATH="/opt/conda/envs/diffusion_policy/bin:$PATH"
 RUN echo "conda activate diffusion_policy" >> /home/user/.bashrc
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
